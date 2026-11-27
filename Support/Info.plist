@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>es</string>
+	<key>CFBundleDisplayName</key>
+	<string>Ondas</string>
+	<key>CFBundleExecutable</key>
+	<string>Ondas</string>
+	<key>CFBundleIdentifier</key>
+	<string>com.ondas.touchbar</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>Ondas</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>1.0</string>
+	<key>CFBundleVersion</key>
+	<string>1</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>14.2</string>
+	<key>LSUIElement</key>
+	<true/>
+	<key>NSHighResolutionCapable</key>
+	<true/>
+	<key>NSAppleEventsUsageDescription</key>
+	<string>Ondas muestra la canción de Spotify en la Touch Bar y te deja pausar, cambiar de canción y adelantar.</string>
+	<key>NSAudioCaptureUsageDescription</key>
+	<string>Ondas escucha el sonido de Spotify para que las barras se muevan con la música. No graba ni guarda nada.</string>
+	<key>NSLocationUsageDescription</key>
+	<string>Ondas usa tu ubicación aproximada para mostrar el clima en la Touch Bar. Solo la envía, redondeada, al servicio del clima (Open-Meteo).</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Ondas usa tu ubicación aproximada para mostrar el clima en la Touch Bar. Solo la envía, redondeada, al servicio del clima (Open-Meteo).</string>
+</dict>
+</plist>

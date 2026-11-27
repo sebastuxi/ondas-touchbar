@@ -1,0 +1,8 @@
+# Compilación
+/.build/
+/build/
+/.swiftpm/
+DerivedData/
+
+# macOS
+.DS_Store
