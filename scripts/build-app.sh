@@ -3,11 +3,17 @@
 #
 # Firma: si defines ONDAS_SIGN_IDENTITY (por ejemplo, tu certificado "Apple Development"),
 # macOS recuerda los permisos aunque vuelvas a compilar. Sin ella, firma ad hoc.
+# ONDAS_UNIVERSAL=1 compila para Intel y Apple Silicon a la vez (lo usa scripts/release.sh).
 set -euo pipefail
 cd "${0:A:h}/.."
 
-swift build -c release
-BIN="$(swift build -c release --show-bin-path)/Ondas"
+ARCHS=()
+if [[ -n "${ONDAS_UNIVERSAL:-}" ]]; then
+  ARCHS=(--arch arm64 --arch x86_64)
+fi
+
+swift build -c release $ARCHS
+BIN="$(swift build -c release $ARCHS --show-bin-path)/Ondas"
 APP="build/Ondas.app"
 
 rm -rf "$APP"

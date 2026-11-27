@@ -178,13 +178,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func wireBar() {
         let view = bar.barView
         view.onOpenSpotify = { [weak self] in self?.spotify.activate() }
-        view.onPrevious = { [weak self] in self?.spotify.previous() }
-        view.onNext = { [weak self] in self?.spotify.next() }
-        view.onTogglePlay = { [weak self] in self?.spotify.playPause() }
-        view.onSeek = { [weak self] seconds in self?.spotify.seek(to: seconds) }
+        view.onPrevious = { [weak self] in self?.toSpotify { $0.previous() } }
+        view.onNext = { [weak self] in self?.toSpotify { $0.next() } }
+        view.onTogglePlay = { [weak self] in self?.toSpotify { $0.playPause() } }
+        view.onSeek = { [weak self] seconds in self?.toSpotify { $0.seek(to: seconds) } }
         view.onToggleLike = { [weak self] in self?.toggleLike() }
         view.onOpenCalendar = { Self.openApp("com.apple.iCal") }
         view.onOpenWeather = { Self.openApp("com.apple.weather") }
+    }
+
+    /// Manda una orden a Spotify, salvo en la demo: ahí tocar la barra no cambia tu música.
+    private func toSpotify(_ order: (SpotifyClient) -> Void) {
+        guard !demo else { return }
+        order(spotify)
     }
 
     private static func openApp(_ bundleID: String) {
@@ -235,7 +241,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     // MARK: - Vista previa (para revisar el diseño)
 
-    /// Solo al abrir así: `open ~/Applications/Ondas.app --args -OndasPreview idle,weather,swipe,charging,dance`.
+    /// Solo al abrir así: `open ~/Applications/Ondas.app --args -OndasPreview demo,idle,weather,swipe,charging,dance`.
     /// En uso normal está vacío y no hace nada.
     private var previewFlags: Set<String> {
         let value = defaults.string(forKey: "OndasPreview") ?? ""
@@ -266,8 +272,63 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         ]
     }()
 
+    /// Vista previa `demo`: una canción de ejemplo con portada propia, para capturas que no muestran lo que escuchas.
+    /// Mientras dura, Ondas no le manda nada a Spotify.
+    private var demo = false
+    private static let demoTrackID = "ondas-demo"
+
+    private func startDemo() {
+        demo = true
+        var song = NowPlaying()
+        song.trackID = Self.demoTrackID
+        song.title = "Baila, bichito"
+        song.artist = "Ondas"
+        song.duration = 214
+        song.position = 71
+        song.positionDate = Date()
+        song.isPlaying = true
+        bar.barView.update(nowPlaying: song)
+        if let cover = Self.demoCover() {
+            bar.barView.setArtwork(cover, palette: Palette.extract(from: cover), glow: ImageEffects.glow(from: cover))
+            bar.setTrayArtwork(cover)
+        }
+        bar.barView.setLike(.liked)
+    }
+
+    /// Portada de la demo: atardecer sobre el agua, con un sol y ondas.
+    private static func demoCover() -> CGImage? {
+        let side = 300
+        let s = CGFloat(side)
+        guard let space = CGColorSpace(name: CGColorSpace.sRGB),
+              let ctx = CGContext(data: nil, width: side, height: side, bitsPerComponent: 8, bytesPerRow: 0, space: space,
+                                  bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return nil }
+        let sky = [CGColor(srgbRed: 1.0, green: 0.36, blue: 0.62, alpha: 1),
+                   CGColor(srgbRed: 0.55, green: 0.25, blue: 0.95, alpha: 1),
+                   CGColor(srgbRed: 0.10, green: 0.12, blue: 0.45, alpha: 1)] as CFArray
+        if let gradient = CGGradient(colorsSpace: space, colors: sky, locations: [0, 0.55, 1]) {
+            ctx.drawLinearGradient(gradient, start: CGPoint(x: 0, y: s), end: .zero, options: [])
+        }
+        ctx.setFillColor(CGColor(srgbRed: 1.0, green: 0.78, blue: 0.30, alpha: 1))
+        ctx.fillEllipse(in: CGRect(x: s * 0.28, y: s * 0.42, width: s * 0.44, height: s * 0.44))
+        ctx.setStrokeColor(CGColor(srgbRed: 0.35, green: 0.95, blue: 0.95, alpha: 0.9))
+        ctx.setLineWidth(s * 0.035)
+        ctx.setLineCap(.round)
+        for row in 0..<4 {
+            let y = s * (0.12 + 0.08 * CGFloat(row))
+            ctx.beginPath()
+            for step in 0...60 {
+                let t = CGFloat(step) / 60
+                let point = CGPoint(x: s * t, y: y + s * 0.025 * sin(t * .pi * 4 + CGFloat(row)))
+                if step == 0 { ctx.move(to: point) } else { ctx.addLine(to: point) }
+            }
+            ctx.strokePath()
+        }
+        return ctx.makeImage()
+    }
+
     private func applyPreview(_ flags: Set<String>) {
         Log.app.notice("Vista previa: \(flags.sorted().joined(separator: ","), privacy: .public)")
+        if flags.contains("demo") { startDemo() }
         // Bichito: bailar aunque esté en pausa, con un carácter de canción fijo, sentado, colgado o sus pasos especiales.
         let view = bar.barView
         if flags.contains("dance") { view.critterPreviewMode = .dancing }
@@ -295,7 +356,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func wireSpotify() {
         spotify.onChange = { [weak self] state in
-            guard let self else { return }
+            guard let self, !self.demo else { return }
             // Al darle play, la barra vuelve aunque la hubieras cerrado con la X o macOS la hubiera quitado
             // (no se fía de `isPresented`: tras dormir la Mac puede estar desactualizado). Y se queda al cambiar de app.
             if state.isPlaying && !self.wasPlaying && self.autoShow {
@@ -312,7 +373,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self.refreshLike()
         }
         spotify.onArtwork = { [weak self] trackID, image in
-            guard let self, trackID == self.spotify.state.trackID, trackID != self.shownArtworkFor else { return }
+            guard let self, !self.demo, trackID == self.spotify.state.trackID, trackID != self.shownArtworkFor else { return }
             self.shownArtworkFor = trackID
             DispatchQueue.global(qos: .userInitiated).async {
                 let palette = Palette.extract(from: image)
@@ -349,6 +410,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - Me gusta
 
     private func refreshLike(force: Bool = false) {
+        guard !demo else { return }
         let state = spotify.state
         guard state.hasTrack, library.isConnected else {
             likeTrackID = ""
@@ -369,6 +431,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func toggleLike() {
+        guard !demo else { return }
         guard library.isConnected else {
             showLikeSetup()
             return
@@ -455,14 +518,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             let snapshot = analyzer.snapshot()
             if snapshot.hasSound { audio = snapshot }
         }
-        let playing = spotify.state.isPlaying
+        let playing = demo || spotify.state.isPlaying
+        let trackID = demo ? Self.demoTrackID : spotify.state.trackID
         let calm = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
         pulse.update(audio: audio, playing: playing, calm: calm, dt: dt)
         keyboard.update(now: now, dt: dt)
 
         guard bar.isPresented else { return }
         let dancing = playing || bar.barView.critterPreviewMode == .dancing
-        let beat = groove.update(audio: audio, playing: dancing, trackID: spotify.state.trackID, now: now, dt: dt)
+        let beat = groove.update(audio: audio, playing: dancing, trackID: trackID, now: now, dt: dt)
         bar.barView.tick(levels: audio?.bands, pulse: pulse.value, groove: beat, now: now)
         bar.syncPulse()
     }
