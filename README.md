@@ -11,12 +11,12 @@ Hace falta una Mac con Touch Bar, macOS 14.2 o posterior y Xcode (o solo las her
 línea de comandos: `xcode-select --install`).
 
 ```sh
-git clone https://github.com/sebastuxi/ondas-touchbar.git
+git clone https://gitlab.com/zedbastian/ondas-touchbar.git
 cd ondas-touchbar
 ./scripts/install.sh            # compila, copia a ~/Applications/Ondas.app y la abre
 ```
 
-También sirve bajar el ZIP desde GitHub (Code → Download ZIP), descomprimirlo y correr
+También sirve bajar el ZIP desde GitLab (botón Code → zip), descomprimirlo y correr
 `./scripts/install.sh` dentro de la carpeta. La primera vez, macOS pide los permisos de abajo.
 «Me gusta» se conecta aparte, con tu propia app de Spotify (ver **Me gusta** en Uso).
 
